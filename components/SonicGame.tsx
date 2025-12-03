@@ -1,6 +1,6 @@
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Play, RotateCcw } from 'lucide-react';
+import { Play, RotateCcw, Smartphone, Monitor, ChevronLeft } from 'lucide-react';
 import { 
   Entity, EntityType, PlayerState, Vector2, CameraState, AnimationState, BossState 
 } from '../types';
@@ -154,6 +154,7 @@ const drawSpriteFrame = (
 };
 
 type GameState = 'MENU' | 'PLAYING' | 'GAMEOVER' | 'VICTORY';
+type MenuSubState = 'MAIN' | 'OPTIONS';
 
 const MENU_OPTIONS = [
     'NORMAL GAME',
@@ -172,9 +173,13 @@ const SonicGame: React.FC = () => {
   
   // Game States
   const [gameState, setGameState] = useState<GameState>('MENU');
+  const [menuSubState, setMenuSubState] = useState<MenuSubState>('MAIN');
   const [uiState, setUiState] = useState<PlayerState | null>(null);
   const [spritesLoaded, setSpritesLoaded] = useState(false);
   const [bossHp, setBossHp] = useState(0);
+  
+  // Settings
+  const [isMobileMode, setIsMobileMode] = useState(false);
   
   // Menu State
   const [menuSelection, setMenuSelection] = useState(0);
@@ -269,10 +274,24 @@ const SonicGame: React.FC = () => {
   };
 
   const confirmMenuSelection = (index: number) => {
-    // Select Option
-    if (index === 0 || index === 1 || index === 2) {
-        initGame();
-        setGameState('PLAYING');
+    // MAIN MENU HANDLER
+    if (menuSubState === 'MAIN') {
+        if (index === 0 || index === 1 || index === 2) { // Start Game
+            initGame();
+            setGameState('PLAYING');
+        } else if (index === 3) { // OPTIONS
+            setMenuSubState('OPTIONS');
+            setMenuSelection(0);
+        }
+    }
+    // OPTIONS MENU HANDLER
+    else if (menuSubState === 'OPTIONS') {
+        if (index === 0) { // Toggle Mobile Mode
+            setIsMobileMode(prev => !prev);
+        } else if (index === 1) { // Back
+            setMenuSubState('MAIN');
+            setMenuSelection(3);
+        }
     }
   };
 
@@ -299,18 +318,23 @@ const SonicGame: React.FC = () => {
     }
   };
 
+  // Keyboard Event Listeners
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => { 
         keys.current[e.code] = true; 
         
         // Menu Navigation
         if (gameState === 'MENU') {
+            const maxOptions = menuSubState === 'MAIN' ? MENU_OPTIONS.length : 2; // 2 options in OPTIONS menu
+            
             if (e.code === 'ArrowUp') {
-                setMenuSelection(prev => (prev > 0 ? prev - 1 : MENU_OPTIONS.length - 1));
+                setMenuSelection(prev => (prev > 0 ? prev - 1 : maxOptions - 1));
             } else if (e.code === 'ArrowDown') {
-                setMenuSelection(prev => (prev < MENU_OPTIONS.length - 1 ? prev + 1 : 0));
+                setMenuSelection(prev => (prev < maxOptions - 1 ? prev + 1 : 0));
             } else if (e.code === 'Enter' || e.code === 'Space') {
                 confirmMenuSelection(menuSelection);
+            } else if (e.code === 'Escape' && menuSubState === 'OPTIONS') {
+                setMenuSubState('MAIN');
             }
         }
     };
@@ -321,7 +345,15 @@ const SonicGame: React.FC = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [gameState, menuSelection, initGame]);
+  }, [gameState, menuSelection, initGame, menuSubState, isMobileMode]);
+
+  // Touch Control Handlers
+  const handleTouchStart = (key: string) => {
+      keys.current[key] = true;
+  };
+  const handleTouchEnd = (key: string) => {
+      keys.current[key] = false;
+  };
 
   const updatePhysics = () => {
     const p = player.current;
@@ -1030,6 +1062,53 @@ const SonicGame: React.FC = () => {
           </div>
       )}
 
+      {/* MOBILE CONTROLS */}
+      {isMobileMode && gameState === 'PLAYING' && (
+          <>
+            {/* D-PAD LEFT */}
+            <div className="absolute bottom-6 left-6 grid grid-cols-3 gap-1 z-50 opacity-70">
+                <div></div>
+                <button 
+                    onMouseDown={() => handleTouchStart('ArrowUp')} onMouseUp={() => handleTouchEnd('ArrowUp')}
+                    onTouchStart={() => handleTouchStart('ArrowUp')} onTouchEnd={() => handleTouchEnd('ArrowUp')}
+                    className="w-16 h-16 bg-gray-800 rounded-t-lg border border-gray-500 active:bg-yellow-500 flex items-center justify-center text-white"
+                >▲</button>
+                <div></div>
+                
+                <button 
+                    onMouseDown={() => handleTouchStart('ArrowLeft')} onMouseUp={() => handleTouchEnd('ArrowLeft')}
+                    onTouchStart={() => handleTouchStart('ArrowLeft')} onTouchEnd={() => handleTouchEnd('ArrowLeft')}
+                    className="w-16 h-16 bg-gray-800 rounded-l-lg border border-gray-500 active:bg-yellow-500 flex items-center justify-center text-white"
+                >◀</button>
+                <div className="w-16 h-16 bg-gray-900 rounded-full"></div>
+                <button 
+                    onMouseDown={() => handleTouchStart('ArrowRight')} onMouseUp={() => handleTouchEnd('ArrowRight')}
+                    onTouchStart={() => handleTouchStart('ArrowRight')} onTouchEnd={() => handleTouchEnd('ArrowRight')}
+                    className="w-16 h-16 bg-gray-800 rounded-r-lg border border-gray-500 active:bg-yellow-500 flex items-center justify-center text-white"
+                >▶</button>
+
+                <div></div>
+                <button 
+                    onMouseDown={() => handleTouchStart('ArrowDown')} onMouseUp={() => handleTouchEnd('ArrowDown')}
+                    onTouchStart={() => handleTouchStart('ArrowDown')} onTouchEnd={() => handleTouchEnd('ArrowDown')}
+                    className="w-16 h-16 bg-gray-800 rounded-b-lg border border-gray-500 active:bg-yellow-500 flex items-center justify-center text-white"
+                >▼</button>
+                <div></div>
+            </div>
+
+            {/* ACTION BUTTON */}
+            <div className="absolute bottom-8 right-8 z-50 opacity-70">
+                <button 
+                    onMouseDown={() => handleTouchStart('Space')} onMouseUp={() => handleTouchEnd('Space')}
+                    onTouchStart={() => handleTouchStart('Space')} onTouchEnd={() => handleTouchEnd('Space')}
+                    className="w-24 h-24 bg-red-600 rounded-full border-4 border-red-800 active:bg-red-400 flex items-center justify-center text-white font-bold text-xl shadow-lg"
+                >
+                    JUMP
+                </button>
+            </div>
+          </>
+      )}
+
       <canvas
         ref={canvasRef}
         width={VIEWPORT_WIDTH}
@@ -1055,23 +1134,59 @@ const SonicGame: React.FC = () => {
                  style={{ clipPath: 'polygon(10% 0, 100% 0, 100% 100%, 0% 100%)' }}>
                 <div className="absolute left-0 top-0 bottom-0 w-4 bg-black/10 skew-x-[-12deg] -translate-x-2"></div>
                 
-                <div className="flex flex-col gap-2 pointer-events-auto">
-                    {MENU_OPTIONS.map((option, index) => (
-                        <div 
-                            key={option} 
-                            onClick={() => confirmMenuSelection(index)}
-                            onMouseEnter={() => setMenuSelection(index)}
+                {menuSubState === 'MAIN' ? (
+                    <div className="flex flex-col gap-2 pointer-events-auto">
+                        {MENU_OPTIONS.map((option, index) => (
+                            <div 
+                                key={option} 
+                                onClick={() => confirmMenuSelection(index)}
+                                onMouseEnter={() => setMenuSelection(index)}
+                                className={`
+                                    text-4xl font-black italic tracking-tight py-2 px-6 transition-all duration-100 cursor-pointer select-none
+                                    ${index === menuSelection 
+                                        ? 'text-black bg-yellow-400 -skew-x-12 translate-x-4 shadow-lg border-l-8 border-black' 
+                                        : 'text-gray-400 hover:text-gray-600 scale-95'}
+                                `}
+                            >
+                                {option}
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    // OPTIONS MENU
+                    <div className="flex flex-col gap-4 pointer-events-auto">
+                         <h2 className="text-4xl font-black italic mb-4">OPTIONS</h2>
+                         
+                         {/* OPTION 1: MOBILE MODE */}
+                         <div 
+                            onClick={() => confirmMenuSelection(0)}
+                            onMouseEnter={() => setMenuSelection(0)}
                             className={`
-                                text-4xl font-black italic tracking-tight py-2 px-6 transition-all duration-100 cursor-pointer select-none
-                                ${index === menuSelection 
+                                flex items-center gap-4 text-2xl font-bold italic py-4 px-6 transition-all duration-100 cursor-pointer select-none
+                                ${menuSelection === 0 
                                     ? 'text-black bg-yellow-400 -skew-x-12 translate-x-4 shadow-lg border-l-8 border-black' 
-                                    : 'text-gray-400 hover:text-gray-600 scale-95'}
+                                    : 'text-gray-500 scale-95'}
                             `}
                         >
-                            {option}
+                            {isMobileMode ? <Smartphone className="w-8 h-8" /> : <Monitor className="w-8 h-8" />}
+                            CONTROLS: {isMobileMode ? 'MOBILE' : 'PC / KEYBOARD'}
                         </div>
-                    ))}
-                </div>
+
+                        {/* OPTION 2: BACK */}
+                        <div 
+                            onClick={() => confirmMenuSelection(1)}
+                            onMouseEnter={() => setMenuSelection(1)}
+                            className={`
+                                flex items-center gap-4 text-2xl font-bold italic py-4 px-6 transition-all duration-100 cursor-pointer select-none
+                                ${menuSelection === 1
+                                    ? 'text-black bg-gray-300 -skew-x-12 translate-x-4 shadow-lg border-l-8 border-black' 
+                                    : 'text-gray-500 scale-95'}
+                            `}
+                        >
+                            <ChevronLeft className="w-8 h-8" /> BACK TO MENU
+                        </div>
+                    </div>
+                )}
                 
                 <div className="absolute bottom-8 right-8 text-xs text-gray-400 font-mono">
                     ARROW KEYS TO NAVIGATE • ENTER TO SELECT
@@ -1102,7 +1217,7 @@ const SonicGame: React.FC = () => {
                 </button>
              )}
               <button 
-                onClick={() => { setGameState('MENU'); }}
+                onClick={() => { setGameState('MENU'); setMenuSubState('MAIN'); }}
                 className="flex items-center gap-2 px-6 py-2 bg-white text-black font-bold rounded-full hover:bg-gray-200 mt-4 transition-transform hover:scale-105"
               >
                 <RotateCcw size={20} /> MAIN MENU
