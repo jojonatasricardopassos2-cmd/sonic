@@ -1,14 +1,32 @@
 
 import { Entity, EntityType, BossState } from '../types';
-import { SECTION_1_END, TILE_SIZE, BOSS_MAX_HP } from '../constants';
+import { SECTION_1_END, TILE_SIZE, BOSS_MAX_HP, SPACE_BOSS_HP } from '../constants';
 
 let entityCounter = 0;
 const uid = () => `ent_${entityCounter++}`;
 
-export const generateLevel = (): Entity[] => {
+export const generateLevel = (act: number = 1, isSpaceBattle: boolean = false): Entity[] => {
   const entities: Entity[] = [];
 
-  const addBlock = (x: number, y: number, w: number, h: number, texture: 'sand' | 'rock' | 'wood' = 'sand') => {
+  // --- SPACE BATTLE (SUPER SONIC) ---
+  if (isSpaceBattle) {
+      // Void layout - No ground, just boss
+      entities.push({
+          id: uid(),
+          type: EntityType.BOSS,
+          pos: { x: 600, y: 200 },
+          size: { x: 80, y: 80 },
+          hp: SPACE_BOSS_HP,
+          maxHp: SPACE_BOSS_HP,
+          active: true,
+          bossState: BossState.SPACE_IDLE,
+          bossTimer: 100
+      });
+      return entities;
+  }
+
+  // --- STANDARD BLOCKS HELPERS ---
+  const addBlock = (x: number, y: number, w: number, h: number, texture: 'sand' | 'rock' | 'wood' | 'metal' = 'sand') => {
     entities.push({
       id: uid(),
       type: EntityType.BLOCK,
@@ -40,6 +58,16 @@ export const generateLevel = (): Entity[] => {
     });
   };
 
+  const addBubble = (x: number, y: number) => {
+    entities.push({
+        id: uid(),
+        type: EntityType.BUBBLE,
+        pos: { x: x * TILE_SIZE, y: y * TILE_SIZE },
+        size: { x: TILE_SIZE, y: TILE_SIZE },
+        active: true
+    });
+  };
+
   const addRingLine = (startX: number, startY: number, count: number) => {
     for (let i = 0; i < count; i++) {
         addRing(startX + i, startY);
@@ -60,7 +88,6 @@ export const generateLevel = (): Entity[] => {
   };
 
   const addSpring = (x: number, y: number) => {
-    // Place spring slightly higher (y - 0.5) to sit ON TOP of blocks
     entities.push({
       id: uid(),
       type: EntityType.SPRING,
@@ -74,14 +101,13 @@ export const generateLevel = (): Entity[] => {
     entities.push({
       id: uid(),
       type: EntityType.DASH_PAD,
-      pos: { x: x * TILE_SIZE, y: (y - 0.2) * TILE_SIZE }, // Slightly up
+      pos: { x: x * TILE_SIZE, y: (y - 0.2) * TILE_SIZE },
       size: { x: TILE_SIZE, y: TILE_SIZE / 2 },
       active: true,
     });
   };
 
   const addLoop = (x: number, y: number) => {
-    // Made loop bigger (4x4)
     entities.push({
         id: uid(),
         type: EntityType.LOOP_TRIGGER,
@@ -92,9 +118,6 @@ export const generateLevel = (): Entity[] => {
   }
 
   const addCheckpoint = (x: number, y: number) => {
-    // y passed is the ground block index. Checkpoint sits on top.
-    // Checkpoint height is 2 tiles. 
-    // Top of checkpoint = (y - 2).
     entities.push({
         id: uid(),
         type: EntityType.CHECKPOINT,
@@ -115,10 +138,49 @@ export const generateLevel = (): Entity[] => {
     });
   }
 
-  // =========================================================================
-  // SECTION 1: EMERALD BEACH
-  // =========================================================================
-  
+  // --- ACT 2: UNDERWATER ---
+  if (act === 2) {
+      // Ceiling and Floor to enclose the level
+      addBlock(0, 0, 100, 2, 'rock'); // Ceiling
+      addBlock(0, 15, 100, 5, 'rock'); // Base Floor
+
+      // Start area
+      addBubble(5, 12);
+      addRingLine(8, 10, 3);
+      
+      // Obstacles
+      addBlock(15, 10, 2, 5, 'metal');
+      addBubble(14, 13);
+      
+      addBlock(25, 8, 2, 7, 'metal');
+      addSpike(27, 14, 2);
+      
+      addEnemy(35, 13);
+      addBubble(40, 10);
+
+      // Deep section
+      addBlock(50, 5, 20, 5, 'rock'); // Middle block
+      addRingLine(50, 12, 5);
+      
+      addCheckpoint(60, 14); // Checkpoint underwater
+
+      // Final rise
+      addSpring(90, 14);
+      addBlock(95, 8, 10, 2, 'metal');
+      
+      // Goal
+      entities.push({
+        id: 'act2_goal',
+        type: EntityType.GOAL,
+        pos: { x: 98 * TILE_SIZE, y: 6 * TILE_SIZE },
+        size: { x: TILE_SIZE, y: TILE_SIZE * 2 },
+        active: true
+      });
+
+      return entities;
+  }
+
+  // --- ACT 1: EMERALD BEACH (Standard) ---
   addBlock(0, 10, 30, 10, 'sand'); 
   addRingLine(5, 8, 5);
   addEnemy(20, 9);
@@ -133,8 +195,6 @@ export const generateLevel = (): Entity[] => {
   // Make lower path start earlier to catch the fall
   addBlock(25, lowerY, 110, 5, 'rock'); 
   
-  // FILLER BLOCKS REMOVED - Returning to open air gap style
-
   // Upper Path Bridges
   addBlock(55, 12, 5, 2, 'wood'); 
   addRing(57, 10);
@@ -181,9 +241,7 @@ export const generateLevel = (): Entity[] => {
   
   addRingLine(145, 8, 5);
 
-  // =========================================================================
   // SECTION 2: CAVE
-  // =========================================================================
   const caveStart = 160;
   
   addBlock(caveStart, 0, 100, 4, 'rock'); 
@@ -213,17 +271,12 @@ export const generateLevel = (): Entity[] => {
   
   addDashPad(caveStart + 90, 2.5);
 
-  // =========================================================================
   // SECTION 3: BRIGHT ARENA & BOSS
-  // =========================================================================
-  const arenaStart = caveStart + 100; // x = ~260
+  const arenaStart = caveStart + 100;
 
-  // Safety floor + Spring to reach platforms if falling from cave
   addBlock(arenaStart - 5, 12, 10, 5, 'rock');
   addSpring(arenaStart, 12);
 
-  // 1. Easy Red (Wood) Platforms leading to Arena
-  // Lowered (y=10..8) and closer gaps
   addPlatform(arenaStart + 4, 10, 10, 1, 'wood');
   addRingLine(arenaStart + 6, 8, 3);
 
@@ -235,29 +288,21 @@ export const generateLevel = (): Entity[] => {
 
   addPlatform(arenaStart + 37, 9, 10, 1, 'wood');
 
-  // 2. Loop & Run up
   const runUpX = arenaStart + 50;
-  addBlock(runUpX, 10, 50, 10, 'rock'); // Ground Y=10
+  addBlock(runUpX, 10, 50, 10, 'rock'); 
   addDashPad(runUpX + 5, 9.5);
   addRingLine(runUpX + 15, 8, 5);
   
-  // Loop sits on top of ground Y=10. Size Y=4. Top=6.
   addLoop(runUpX + 25, 6); 
 
-  // 3. Boss Arena (Flat, Bright)
   const bossArenaX = runUpX + 40;
-  
-  // Extended flat ground for the boss fight
-  addBlock(bossArenaX, 12, 40, 5, 'sand'); // Floor at Y=12
-  
-  // Checkpoint before boss - Ensure it sits ON TOP of ground (Y=12)
+  addBlock(bossArenaX, 12, 40, 5, 'sand');
   addCheckpoint(bossArenaX - 2, 12);
   
-  // Boss Entity - Spawns in AIR (Phase 1: Hover)
   entities.push({
     id: uid(),
     type: EntityType.BOSS,
-    pos: { x: (bossArenaX + 15) * TILE_SIZE, y: 4 * TILE_SIZE }, // High up
+    pos: { x: (bossArenaX + 15) * TILE_SIZE, y: 4 * TILE_SIZE },
     size: { x: TILE_SIZE * 2, y: TILE_SIZE * 2 },
     velocity: { x: 0, y: 0 },
     hp: BOSS_MAX_HP, 

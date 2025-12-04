@@ -1,19 +1,21 @@
 
 export enum EntityType {
   PLAYER = 'PLAYER',
-  BLOCK = 'BLOCK', // Solid ground
-  PLATFORM = 'PLATFORM', // Jump-through from bottom
+  BLOCK = 'BLOCK', 
+  PLATFORM = 'PLATFORM', 
   RING = 'RING',
-  ENEMY = 'ENEMY', // Generic bad guy
-  SPRING = 'SPRING', // Bounces player up
-  DASH_PAD = 'DASH_PAD', // Boosts speed
-  LOOP_TRIGGER = 'LOOP_TRIGGER', // Visual loop event
+  ENEMY = 'ENEMY', 
+  SPRING = 'SPRING', 
+  DASH_PAD = 'DASH_PAD', 
+  LOOP_TRIGGER = 'LOOP_TRIGGER', 
   GOAL = 'GOAL',
   SPIKE = 'SPIKE',
-  BRIDGE = 'BRIDGE', // Breakable bridge
-  CHECKPOINT = 'CHECKPOINT', // Save spot
-  BOSS = 'BOSS', // Robotnik
-  PROJECTILE = 'PROJECTILE' // Boss bullets
+  BRIDGE = 'BRIDGE', 
+  CHECKPOINT = 'CHECKPOINT', 
+  BOSS = 'BOSS', 
+  PROJECTILE = 'PROJECTILE',
+  BUBBLE = 'BUBBLE', // Act 2 Air Bubble
+  MISSILE = 'MISSILE' // Space Boss Missile
 }
 
 export enum AnimationState {
@@ -25,15 +27,23 @@ export enum AnimationState {
   SKID = 'SKID',
   ROLL = 'ROLL',
   HURT = 'HURT',
-  VICTORY = 'VICTORY'
+  VICTORY = 'VICTORY',
+  FLY = 'FLY', // Tails/Super
+  CHAOS = 'CHAOS' // Shadow
 }
 
 export enum BossState {
   HOVER = 'HOVER',
   DESCEND = 'DESCEND',
   VULNERABLE = 'VULNERABLE',
-  ASCEND = 'ASCEND'
+  ASCEND = 'ASCEND',
+  SPACE_IDLE = 'SPACE_IDLE',
+  SPACE_ATTACK = 'SPACE_ATTACK',
+  SPACE_HURT = 'SPACE_HURT'
 }
+
+export type CharacterType = 'SONIC' | 'TAILS' | 'SHADOW' | 'SUPER';
+export type GameMode = 'NORMAL' | 'TIME_ATTACK';
 
 export interface Vector2 {
   x: number;
@@ -46,19 +56,17 @@ export interface Entity {
   pos: Vector2;
   size: Vector2;
   velocity?: Vector2;
-  active: boolean; // For collected rings or defeated enemies
-  // specific props
+  active: boolean;
   color?: string;
-  texture?: 'sand' | 'rock' | 'wood' | 'grass';
-  patrolRange?: number; // For enemies
-  initialX?: number; // For patrol reference
-  hp?: number; // For boss
-  maxHp?: number; // For boss health bar
-  triggered?: boolean; // For checkpoint
-  lifespan?: number; // Frames until entity disappears (for scattered rings)
-  pickupDelay?: number; // Frames before can be picked up
+  texture?: 'sand' | 'rock' | 'wood' | 'grass' | 'metal';
+  patrolRange?: number;
+  initialX?: number;
+  hp?: number;
+  maxHp?: number;
+  triggered?: boolean;
+  lifespan?: number;
+  pickupDelay?: number;
   
-  // Boss AI props
   bossState?: BossState;
   bossTimer?: number;
 }
@@ -69,24 +77,38 @@ export interface PlayerState {
   isGrounded: boolean;
   isJumping: boolean;
   isRolling: boolean;
-  isLooping: boolean; // In a scripted loop sequence
-  loopCenter?: Vector2; // Center point of the loop for physics
-  loopCooldown: number; // Prevent re-triggering loop immediately
+  isLooping: boolean;
+  loopCenter?: Vector2;
+  loopCooldown: number;
   facingRight: boolean;
   rings: number;
   score: number;
   time: number;
   invincibleTimer: number;
-  loopProgress: number; // 0 to 1 for loop animation
+  loopProgress: number;
   animState: AnimationState;
   frameIndex: number;
   frameTimer: number;
   checkpointPos?: Vector2;
-  jumpCount: number; // 0, 1, 2, 3
-  jumpKeyDown: boolean; // To handle key debounce
+  jumpCount: number;
+  jumpKeyDown: boolean;
+
+  // New States
+  character: CharacterType;
+  oxygen: number; // For underwater (Max 1200 frames = 20s)
+  isFlying: boolean; // Tails
+  flyTimer: number;
+  isChaosControl: boolean; // Shadow
+  chaosTimer: number;
 }
 
 export interface CameraState {
   x: number;
   y: number;
+}
+
+export interface ModStatus {
+  activeMod: CharacterType | null;
+  isLoading: boolean;
+  progress: number;
 }
