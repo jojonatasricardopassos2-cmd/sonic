@@ -254,7 +254,16 @@ const SonicGame: React.FC = () => {
     // Always regenerate level to be safe
     levelEntities.current = generateLevel();
     startTime.current = Date.now();
-    nearbyEntitiesRef.current = [];
+    
+    // Initial Population of Nearby Entities for Menu Background
+    const searchRadius = 1500; 
+    const viewLeft = player.current.pos.x - searchRadius;
+    const viewRight = player.current.pos.x + searchRadius;
+    
+    nearbyEntitiesRef.current = levelEntities.current.filter(ent => 
+        ent.active &&
+        (ent.pos.x + ent.size.x > viewLeft && ent.pos.x < viewRight)
+    );
     
     setBossHp(0);
     setUiState(player.current);
@@ -782,7 +791,8 @@ const SonicGame: React.FC = () => {
   };
 
   const draw = () => {
-    const ctx = canvasRef.current?.getContext('2d', { alpha: false }); 
+    // Removed alpha: false to prevent black screen on some devices
+    const ctx = canvasRef.current?.getContext('2d'); 
     if (!ctx) return;
 
     const cam = camera.current;
@@ -1014,19 +1024,23 @@ const SonicGame: React.FC = () => {
   };
 
   const gameLoop = () => {
-    if (gameState === 'PLAYING') {
-      updatePhysics();
-    } 
-    
-    // Always draw (renders background level in menu)
-    draw();
-      
-    if (gameState === 'PLAYING') {
-        framesSinceLastUiUpdate.current++;
-        if (framesSinceLastUiUpdate.current > 10) {
-            setUiState({ ...player.current });
-            framesSinceLastUiUpdate.current = 0;
+    try {
+        if (gameState === 'PLAYING') {
+          updatePhysics();
+        } 
+        
+        // Always draw (renders background level in menu)
+        draw();
+          
+        if (gameState === 'PLAYING') {
+            framesSinceLastUiUpdate.current++;
+            if (framesSinceLastUiUpdate.current > 10) {
+                setUiState({ ...player.current });
+                framesSinceLastUiUpdate.current = 0;
+            }
         }
+    } catch (e) {
+        console.error("Game Loop Error:", e);
     }
       
     requestRef.current = requestAnimationFrame(gameLoop);
